@@ -1,15 +1,15 @@
 import { Router } from 'express';
 import { celebrate, Segments, Joi } from 'celebrate';
 
-import ensureAuthentication from '@modules/users/infra/http/middlewares/ensureAuthentication';
-import AppointmentsController from '../controllers/appointmentsController';
+import ensuredAuthenticated from '@modules/users/infra/http/middlewares/ensureAuthentication';
+import AppointmentsController from '../controllers/AppointmentController';
 import ProviderAppointmentsController from '../controllers/ProviderAppointmentsController';
 
 const appointmentsRouter = Router();
 const appointmentsController = new AppointmentsController();
 const providerAppointmentsController = new ProviderAppointmentsController();
 
-appointmentsRouter.use(ensureAuthentication);
+appointmentsRouter.use(ensuredAuthenticated);
 
 appointmentsRouter.post(
   '/',
@@ -21,6 +21,6 @@ appointmentsRouter.post(
   }),
   appointmentsController.create,
 );
-appointmentsRouter.post('/me', providerAppointmentsController.index);
+appointmentsRouter.get('/me', providerAppointmentsController.index);
 
 export default appointmentsRouter;

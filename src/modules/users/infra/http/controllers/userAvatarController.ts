@@ -13,8 +13,6 @@ export default class UserAvatarController {
       avatarFilename: req.file.filename,
     });
 
-    delete user.password;
-
     return res.json(classToClass(user));
   }
 }

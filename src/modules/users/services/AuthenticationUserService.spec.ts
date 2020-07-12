@@ -1,5 +1,6 @@
 import FakeUsersRepository from '@modules/users/repositories/fakes/FakeUsersRepository';
 import FakeHashProvider from '@modules/users/providers/HashProvider/fakes/FakeHashProvider';
+import FakeCacheProvider from '@shared/container/providers/CacheProvider/fakes/FakeCacheProvider';
 import AppError from '@shared/errors/AppErrors';
 import AuthenticationUsersService from './AuthenticationUserService';
 import CreateUsersService from './CreateUserService';
@@ -8,9 +9,11 @@ describe('AuthenticateUser', () => {
   it('should be able to authenticate', async () => {
     const fakeUsersRepository = new FakeUsersRepository();
     const fakeHashProvider = new FakeHashProvider();
+    const fakeCacheProvider = new FakeCacheProvider();
     const createUsers = new CreateUsersService(
       fakeUsersRepository,
       fakeHashProvider,
+      fakeCacheProvider,
     );
     const authenticateUsers = new AuthenticationUsersService(
       fakeUsersRepository,
@@ -52,9 +55,11 @@ describe('AuthenticateUser', () => {
   it('should not be able to authenticate with wrong password', async () => {
     const fakeUsersRepository = new FakeUsersRepository();
     const fakeHashProvider = new FakeHashProvider();
+    const fakeCacheProvider = new FakeCacheProvider();
     const createUsers = new CreateUsersService(
       fakeUsersRepository,
       fakeHashProvider,
+      fakeCacheProvider,
     );
     const authenticateUsers = new AuthenticationUsersService(
       fakeUsersRepository,

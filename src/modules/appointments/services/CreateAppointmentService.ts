@@ -1,68 +1,84 @@
 import { startOfHour, isBefore, getHours, format } from 'date-fns';
-import { inject, injectable } from 'tsyringe';
+import { ptBR } from 'date-fns/locale';
+import { injectable, inject } from 'tsyringe';
 
 import AppError from '@shared/errors/AppErrors';
-import Appointment from '@modules/appointments/infra/typeorm/entities/Appointment';
-import IAppointmentRepository from '@modules/appointments/repositories/IAppointmentsRepository';
+
+import ICacheProvider from '@shared/container/providers/CacheProvider/models/ICacheProvider';
+
 import INotificationsRepository from '@modules/notifications/repositories/INotificationsRepository';
+import Appointment from '../infra/typeorm/entities/Appointment';
+import IAppointmentsRepository from '../repositories/IAppointmentsRepository';
 
 interface IRequest {
   provider_id: string;
-  date: Date;
   user_id: string;
+  date: Date;
 }
-
 @injectable()
 class CreateAppointmentService {
   constructor(
     @inject('AppointmentsRepository')
-    private appointmentsRepository: IAppointmentRepository,
+    private appointmentsRepository: IAppointmentsRepository,
 
     @inject('NotificationsRepository')
     private notificationsRepository: INotificationsRepository,
+
+    @inject('CacheProvider')
+    private cacheProvider: ICacheProvider,
   ) {}
 
   public async execute({
-    provider_id,
     date,
     user_id,
+    provider_id,
   }: IRequest): Promise<Appointment> {
     const appointmentDate = startOfHour(date);
 
-    if (isBefore(appointmentDate, Date.now())) {
-      throw new AppError('You cannot create an appointment on past date');
+    const findAppointmentInSameDate = await this.appointmentsRepository.findByDate(
+      appointmentDate,
+      provider_id,
+    );
+
+    if (findAppointmentInSameDate) {
+      throw new AppError('This Appointment is already booked');
     }
 
-    if (provider_id === user_id) {
-      throw new AppError('You cannot create an appointment with yourself');
+    if (isBefore(appointmentDate, Date.now())) {
+      throw new AppError("You Can't create an appointment on a past date.");
+    }
+
+    if (user_id === provider_id) {
+      throw new AppError("You can't create an appointment with yourself.");
     }
 
     if (getHours(appointmentDate) < 8 || getHours(appointmentDate) > 17) {
       throw new AppError(
-        'You can only create an appointment between 8AM and 17PM',
+        'You can only create appointments between 8am and 5pm',
       );
-    }
-
-    const checkDateExists = await this.appointmentsRepository.findByDate(
-      appointmentDate,
-    );
-
-    if (checkDateExists) {
-      throw new AppError('This appointment is already booked!');
     }
 
     const appointment = await this.appointmentsRepository.create({
       provider_id,
-      date: appointmentDate,
       user_id,
+      date: appointmentDate,
     });
 
-    const formattedDate = format(appointmentDate, "dd/MM/yyyy 'às' HH:mm'h'");
+    const dateFormatted = format(appointmentDate, "dd/MM/yyyy 'às' HH:mm'h'", {
+      locale: ptBR,
+    });
 
     await this.notificationsRepository.create({
       destination_id: provider_id,
-      content: `Novo agendamento para o dia ${formattedDate}`,
+      content: `Novo agendamento para o dia ${dateFormatted}`,
     });
+
+    await this.cacheProvider.invalidate(
+      `provider-appointments:${provider_id}:${format(
+        appointmentDate,
+        'yyyy-M-d',
+      )}`,
+    );
 
     return appointment;
   }
